@@ -1,0 +1,21 @@
+{
+  "name": "basera-platform",
+  "private": true,
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace apps/backend\" \"npm run dev --workspace apps/frontend\"",
+    "dev:backend": "npm run dev --workspace apps/backend",
+    "dev:frontend": "npm run dev --workspace apps/frontend",
+    "dev:api": "npm run dev:backend",
+    "dev:web": "npm run dev:frontend",
+    "build": "npm run build --workspace apps/backend && npm run build --workspace apps/frontend",
+    "lint": "npm run lint --workspace apps/backend && npm run lint --workspace apps/frontend",
+    "typecheck": "npm run typecheck --workspace apps/backend && npm run typecheck --workspace apps/frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

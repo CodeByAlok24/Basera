@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  student
+  pg_owner
+  mess_owner
+  admin
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  expired
+  cancelled
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+}
+
+enum MealStatus {
+  scheduled
+  served
+  cancelled
+}
+
+enum WalletTransactionType {
+  credit
+  debit
+}
+
+enum WalletReason {
+  meal_cancellation
+  owner_cancellation
+  subscription_payment
+  adjustment
+}
+
+enum PaymentPurpose {
+  pg_booking
+  mess_subscription
+}
+
+enum PaymentStatus {
+  created
+  paid
+  failed
+  refunded
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  name               String
+  email              String              @unique
+  phone              String?             @unique
+  passwordHash       String
+  role               UserRole
+  createdAt          DateTime            @default(now())
+  pgListings         PgListing[]         @relation("PgOwnerListings")
+  messListings       MessListing[]       @relation("MessOwnerListings")
+  pgBookings         PgBooking[]
+  messSubscriptions  MessSubscription[]
+  walletTransactions WalletTransaction[]
+  payments           Payment[]
+}
+
+model PgListing {
+  id          String      @id @default(cuid())
+  ownerId     String
+  title       String
+  address     String
+  city        String
+  rent        Decimal     @db.Decimal(10, 2)
+  sharingType String
+  amenities   Json
+  photos      Json
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  owner       User        @relation("PgOwnerListings", fields: [ownerId], references: [id])
+  bookings    PgBooking[]
+}
+
+model PgBooking {
+  id          String        @id @default(cuid())
+  studentId   String
+  pgListingId String
+  startDate   DateTime
+  status      BookingStatus @default(pending)
+  amountPaid  Decimal       @db.Decimal(10, 2)
+  createdAt   DateTime      @default(now())
+  student     User          @relation(fields: [studentId], references: [id])
+  pgListing   PgListing     @relation(fields: [pgListingId], references: [id])
+}
+
+model MessListing {
+  id                 String              @id @default(cuid())
+  ownerId            String
+  name               String
+  address            String
+  city               String
+  menu               Json
+  pricePerPlan       Decimal             @db.Decimal(10, 2)
+  mealsPerDay        Int
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  owner              User                @relation("MessOwnerListings", fields: [ownerId], references: [id])
+  subscriptions      MessSubscription[]
+  dailyMessSummaries DailyMessSummary[]
+}
+
+model MessSubscription {
+  id            String             @id @default(cuid())
+  studentId     String
+  messListingId String
+  planType      String
+  startDate     DateTime
+  endDate       DateTime
+  amountPaid    Decimal            @db.Decimal(10, 2)
+  status        SubscriptionStatus  @default(active)
+  createdAt     DateTime           @default(now())
+  student       User               @relation(fields: [studentId], references: [id])
+  messListing   MessListing        @relation(fields: [messListingId], references: [id])
+  meals         MealSchedule[]
+}
+
+model MealSchedule {
+  id                 String              @id @default(cuid())
+  subscriptionId     String
+  mealDate           DateTime
+  mealType           MealType
+  servingTime        DateTime
+  pricePerMeal       Decimal             @db.Decimal(10, 2)
+  status             MealStatus          @default(scheduled)
+  cancelledAt        DateTime?
+  createdAt          DateTime            @default(now())
+  subscription       MessSubscription    @relation(fields: [subscriptionId], references: [id])
+  walletTransactions WalletTransaction[]
+
+  @@index([mealDate, mealType, status])
+}
+
+model WalletTransaction {
+  id              String                @id @default(cuid())
+  studentId       String
+  type            WalletTransactionType
+  amount          Decimal               @db.Decimal(10, 2)
+  reason          WalletReason
+  linkedMealId    String?
+  linkedPaymentId String?
+  createdAt       DateTime              @default(now())
+  student         User                  @relation(fields: [studentId], references: [id])
+  linkedMeal      MealSchedule?         @relation(fields: [linkedMealId], references: [id])
+  linkedPayment   Payment?              @relation(fields: [linkedPaymentId], references: [id])
+
+  @@index([studentId, createdAt])
+}
+
+model Payment {
+  id                 String              @id @default(cuid())
+  userId             String
+  amount             Decimal             @db.Decimal(10, 2)
+  purpose            PaymentPurpose
+  gatewayPaymentId   String?             @unique
+  gatewayOrderId     String?             @unique
+  status             PaymentStatus        @default(created)
+  createdAt          DateTime            @default(now())
+  user               User                @relation(fields: [userId], references: [id])
+  walletTransactions WalletTransaction[]
+}
+
+model DailyMessSummary {
+  id              String      @id @default(cuid())
+  messListingId   String
+  date            DateTime
+  totalMeals      Int
+  totalCancelled  Int
+  expectedRevenue Decimal     @db.Decimal(10, 2)
+  actualRevenue   Decimal     @db.Decimal(10, 2)
+  messListing     MessListing @relation(fields: [messListingId], references: [id])
+
+  @@unique([messListingId, date])
+}
+

@@ -9,8 +9,14 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().default(Number(process.env.PORT) || 4000),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1).optional(),
-  JWT_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_SECRET: z
+    .string()
+    .min(32)
+    .default("basera_jwt_secret_production_key_2026_super_secure_auth_32chars"),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(32)
+    .default("basera_jwt_refresh_secret_production_key_2026_secure_32chars"),
   WEB_APP_URL: z
     .string()
     .url()
